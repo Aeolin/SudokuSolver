@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SudokuSolver.WFC
 {
-  public class SudokuElementFactory<T> : AbstractElementFactory<T>
+  public class SudokuElementFactory<T, R> : AbstractElementFactory<T, R> where T : IRestoreable<R>
   {
     public int RectanglesPerSide { get; init; }
     private IValidator<T> _validator;
@@ -18,7 +18,7 @@ namespace SudokuSolver.WFC
       _validator=validator;
     }
 
-    public override IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T> board)
+    public override IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T, R> board)
     {
       for (int i = 0; i < board.Height; i++)
         yield return Row(board, i);
@@ -30,28 +30,28 @@ namespace SudokuSolver.WFC
         yield return Rectangle(board, i);
     }
 
-    public override IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T> board, int x, int y)
+    public override IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T, R> board, int x, int y)
     {
       yield return Row(board, y);
       yield return Column(board, x);
       yield return Rectangle(board, (y / RectanglesPerSide) * RectanglesPerSide + (x / RectanglesPerSide));
     }
 
-    public RowElement<T> Row(AbstractBoard<T> board, int index) =>
+    public RowElement<T> Row(AbstractBoard<T, R> board, int index) =>
       new RowElement<T>(index, _validator,
         Enumerable.Range(0, board.Width)
         .Select(x => board.Get(x, index))
       );
 
-    public ColumnElement<T> Column(AbstractBoard<T> board, int index) =>
+    public ColumnElement<T> Column(AbstractBoard<T, R> board, int index) =>
       new ColumnElement<T>(index, _validator,
         Enumerable.Range(0, board.Height)
         .Select(y => board.Get(index, y))
       );
 
-    public RectangleElement<T> Rectangle(AbstractBoard<T> board, int index) => new RectangleElement<T>(index, _validator, rectParts(index, board));
+    public RectangleElement<T> Rectangle(AbstractBoard<T, R> board, int index) => new RectangleElement<T>(index, _validator, rectParts(index, board));
 
-    private IEnumerable<T> rectParts(int index, AbstractBoard<T> board)
+    private IEnumerable<T> rectParts(int index, AbstractBoard<T, R> board)
     {
       var rectHeight = board.Height / this.RectanglesPerSide;
       var rectWidth = board.Width / this.RectanglesPerSide;

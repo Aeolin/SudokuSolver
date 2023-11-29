@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SudokuSolver.Board;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,12 +7,14 @@ using System.Threading.Tasks;
 
 namespace SudokuSolver.WFC
 {
-  public class WFCState
+	public class WFCState : IRestoreable<WFCStateBackup>
   {
     public int X { get; init; }
     public int Y { get; init; }
     private int? _collapsed;
-    public HashSet<int> RemainingValues { get; init; }
+    public HashSet<int> RemainingValues { get; private set; }
+
+    public bool HasRemaining => RemainingValues.Count > 1 && IsCollapsed == false;
 
     public bool IsCollapsed => _collapsed != null;
     public bool IsCollapsable => _collapsed == null;
@@ -44,5 +47,13 @@ namespace SudokuSolver.WFC
     public void Collapse(int value) => _collapsed = value;
 
     public int GetValueOrDefault(int @default) => _collapsed ?? @default;
-  }
+
+    public WFCStateBackup Backup() => new WFCStateBackup { States = new HashSet<int>(RemainingValues), Collapsed = _collapsed };
+
+		public void Restore(WFCStateBackup backup)
+		{
+      RemainingValues = backup.States;
+      _collapsed = backup.Collapsed;
+		}
+	}
 }

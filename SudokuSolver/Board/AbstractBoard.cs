@@ -6,26 +6,51 @@ using System.Threading.Tasks;
 
 namespace SudokuSolver.Board
 {
-  public abstract class AbstractBoard<T>
+  public abstract class AbstractBoard<T, R> where T : IRestoreable<R>
   {
     public int Width { get; init; }
     public int Height { get; init; }
-    private AbstractElementFactory<T> _factory;
+    private AbstractElementFactory<T, R> _factory;
     private readonly T[] _values;
+    private readonly Stack<R[]> _restoreFrames;
 
+    public void PushState()
+    {
+			var backup = new R[_values.Length];
+      for (int i = 0; i < backup.Length; i++)
+        backup[i] = _values[i].Backup();
 
-    public AbstractBoard(IEnumerable<T> values, AbstractElementFactory<T> factory, int width, int height)
+      _restoreFrames.Push(backup);
+			Console.WriteLine($"Pushed Backtracking State #{_restoreFrames.Count}");
+    }
+
+    public bool PopState()
+    {
+      if (_restoreFrames.Count == 0)
+        return false;
+
+      Console.WriteLine($"Popped Backtracking State #{_restoreFrames.Count}");
+      var backup = _restoreFrames.Pop();
+      for (int i = 0; i <  _values.Length; i++)
+        _values[i].Restore(backup[i]);
+
+      return true;
+    }
+
+    public AbstractBoard(IEnumerable<T> values, AbstractElementFactory<T, R> factory, int width, int height)
     {
       this.Width = width;
       this.Height = height;
       this._values = values.ToArray();
+      this._restoreFrames = new Stack<R[]>();
 
       if (_values.Length != Width*Height)
         throw new ArgumentException($"Passed array length {_values.Length} mistmatches board size {Width}x{Height} = {Width*Height}");
       _factory=factory;
+      
     }
 
-    public AbstractBoard(Func<int, int, T> initializer, AbstractElementFactory<T> factory, int width, int height) : this(Enumerable.Range(0, width*height).Select(pos => initializer(pos % width, pos / width)), factory, width, height)
+    public AbstractBoard(Func<int, int, T> initializer, AbstractElementFactory<T, R> factory, int width, int height) : this(Enumerable.Range(0, width*height).Select(pos => initializer(pos % width, pos / width)), factory, width, height)
     {
 
     }

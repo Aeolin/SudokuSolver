@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace SudokuSolver.Board
 {
-  public abstract class AbstractElementFactory<T>
+  public abstract class AbstractElementFactory<T, R> where T : IRestoreable<R>
   {
-    public abstract IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T> board);
-    public abstract IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T> board, int x, int y);
+    public abstract IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T, R> board);
+    public abstract IEnumerable<AbstractElement<T>> Elements(AbstractBoard<T, R> board, int x, int y);
   }
 }
