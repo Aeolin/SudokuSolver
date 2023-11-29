@@ -8,7 +8,6 @@ using System.Diagnostics.CodeAnalysis;
 
 internal class Program
 {
-	[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SudokuPuzzle))]
 	private static void Main(string[] args)
 	{
 		string file = null;

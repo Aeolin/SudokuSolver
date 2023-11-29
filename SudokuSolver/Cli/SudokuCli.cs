@@ -2,6 +2,7 @@
 using SudokuSolver.WFC.CollapseRules;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -59,7 +60,6 @@ namespace SudokuSolver.Cli
 				{ MATCH_SAVE_COMMAND, HandleSaveCommand }
 			};
 		}
-
 
 		public static SudokuCli Create(string path = null)
 		{
