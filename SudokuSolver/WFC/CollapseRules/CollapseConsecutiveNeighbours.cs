@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SudokuSolver.WFC.CollapseRules
 {
-	public class CollapseNeighbours : ICollapseRule<WFCState, WFCStateBackup>
+	public class CollapseConsecutiveNeighbours : ICollapseRule<WFCState, WFCStateBackup>
 	{
 		public void Collapse(int x, int y, int value, AbstractBoard<WFCState, WFCStateBackup> board)
 		{

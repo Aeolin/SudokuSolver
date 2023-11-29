@@ -14,16 +14,16 @@ namespace SudokuSolver.Board
 		private readonly T[] _values;
 		private readonly Dictionary<int, AbstractElementGroup<T>> _groups = new Dictionary<int, AbstractElementGroup<T>>();
 		public IReadOnlyDictionary<int, AbstractElementGroup<T>> Groups => _groups;
-		private readonly Stack<R[]> _restoreFrames;
+		private readonly Stack<AbstractBackup<R>> _restoreFrames;
+		public IEnumerable<AbstractBackup<R>> Backups => _restoreFrames;
 
-
-		public void PushState()
+		public void PushState(string name = null)
 		{
 			var backup = new R[_values.Length];
 			for (int i = 0; i < backup.Length; i++)
 				backup[i] = _values[i].Backup();
 
-			_restoreFrames.Push(backup);
+			_restoreFrames.Push(new AbstractBackup<R>(backup, _restoreFrames.Count+1, name));
 			Console.WriteLine($"Pushed Backtracking State #{_restoreFrames.Count}");
 		}
 
@@ -35,9 +35,17 @@ namespace SudokuSolver.Board
 			Console.WriteLine($"Popped Backtracking State #{_restoreFrames.Count}");
 			var backup = _restoreFrames.Pop();
 			for (int i = 0; i <  _values.Length; i++)
-				_values[i].Restore(backup[i]);
+				_values[i].Restore(backup.Backup[i]);
 
 			return true;
+		}
+
+		public void Restore(AbstractBackup<R> backup)
+		{
+			while (_restoreFrames.Pop() != backup) ;
+			_restoreFrames.Pop();
+			for (int i = 0; i < _values.Length; i++)
+				_values[i].Restore(backup.Backup[i]);	
 		}
 
 		public AbstractBoard(IEnumerable<T> values, AbstractElementFactory<T, R> factory, int width, int height)
@@ -45,7 +53,7 @@ namespace SudokuSolver.Board
 			this.Width = width;
 			this.Height = height;
 			this._values = values.ToArray();
-			this._restoreFrames = new Stack<R[]>();
+			this._restoreFrames = new Stack<AbstractBackup<R>>();
 
 			if (_values.Length != Width*Height)
 				throw new ArgumentException($"Passed array length {_values.Length} mistmatches board size {Width}x{Height} = {Width*Height}");
@@ -79,8 +87,9 @@ namespace SudokuSolver.Board
 		public virtual AbstractBoard<T, R> WithGroup(HashSet<int> group)
 		{
 			var elements = group.Select(x => Cells[x]).ToHashSet();
+			var egroup = new AbstractElementGroup<T>(elements);
 			foreach (var i in group)
-				_groups.Add(i, new AbstractElementGroup<T>(elements));
+				_groups.Add(i, egroup);
 
 			return this;
 		}
@@ -88,8 +97,9 @@ namespace SudokuSolver.Board
 		public virtual AbstractBoard<T, R> WithGroup(HashSet<(int x, int y)> group)
 		{
 			var elements = group.Select(x => this[x.x, x.y]).ToHashSet();
+			var egroup = new AbstractElementGroup<T>(elements);
 			foreach (var i in group)
-				_groups.Add(Index(i.x, i.y).Value, new AbstractElementGroup<T>(elements));
+				_groups.Add(Index(i.x, i.y).Value, egroup);
 
 			return this;
 		}

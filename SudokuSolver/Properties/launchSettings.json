@@ -1,7 +1,8 @@
 {
   "profiles": {
     "SudokuSolver": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "X:\\\\Data\\\\Workspaces\\\\Awo\\\\SudokuSolver\\\\SudokuSolver\\\\Resources\\\\pap-sudoku.json"
     },
     "WSL": {
       "commandName": "WSL2",

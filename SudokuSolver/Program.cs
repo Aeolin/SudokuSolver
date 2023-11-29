@@ -1,4 +1,6 @@
-﻿using SudokuSolver.BruteForce;
+﻿using SudokuSolver;
+using SudokuSolver.BruteForce;
+using SudokuSolver.Cli;
 using SudokuSolver.WFC;
 using SudokuSolver.WFC.CollapseRules;
 using System.Diagnostics;
@@ -173,7 +175,7 @@ var solver = WFCSolver.FromList(wierdBoard, 9, 9, 3, solver =>
 		.WithGroup((6, 8), (7, 8), (8, 8), (7, 7), (8, 7), (7, 6), (8, 6), (7, 5), (7, 4))
 		.WithGroup((5, 2), (6, 2), (6, 3), (6, 2), (6, 1), (6, 0), (7, 0), (8, 0), (8, 1))
 		.WithGroup((7, 1), (7, 2), (8, 2), (8, 3), (8, 4), (8, 5))
-		.WithCollapseRule(new CollapseNeighbours())
+		.WithCollapseRule(new CollapseConsecutiveNeighbours())
 		.WithPrintWithStates(true)
 		.UseBacktracking(true);
 	}
@@ -192,19 +194,12 @@ var bfSolver = BruteForceSolver.FromList(wierdBoardOriginal, 9, 9, 3, solver =>
 		.WithGroup((7, 1), (7, 2), (8, 2), (8, 3), (8, 4), (8, 5));
 });
 
-Console.WriteLine(bfSolver.Print());
-var watch = new Stopwatch();
-watch.Start();
-var result = bfSolver.Solve(out var steps);
-watch.Stop();
-Console.WriteLine($"{(result ? "Solveable" : "Unsolveable")} with {steps} steps in {watch.Elapsed.TotalSeconds:00.000}s");
+string file = null;
+if (args.Length == 1)
+	file = args[0];
 
+if (file.StartsWith('"') && file.EndsWith('"'))
+	file = file[1..^1];
 
-
-//Console.WriteLine(solver.Print());
-//var watch = new Stopwatch();
-//watch.Start();
-//var result = solver.Solve(out var steps, true);
-//watch.Stop();
-//Console.WriteLine($"{(result ? "Solveable" : "Unsolveable")} with {steps} steps in {watch.Elapsed.TotalSeconds:00.000}s");
-//Console.WriteLine(solver.PrintWithStates());
+var cli = SudokuCli.Create(file);
+cli.Run();
