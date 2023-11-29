@@ -6,72 +6,98 @@ using System.Threading.Tasks;
 
 namespace SudokuSolver.Board
 {
-  public abstract class AbstractBoard<T, R> where T : IRestoreable<R>
-  {
-    public int Width { get; init; }
-    public int Height { get; init; }
-    private AbstractElementFactory<T, R> _factory;
-    private readonly T[] _values;
-    private readonly Stack<R[]> _restoreFrames;
+	public abstract class AbstractBoard<T, R> where T : IRestoreable<R>
+	{
+		public int Width { get; init; }
+		public int Height { get; init; }
+		private AbstractElementFactory<T, R> _factory;
+		private readonly T[] _values;
+		private readonly Dictionary<int, AbstractElementGroup<T>> _groups = new Dictionary<int, AbstractElementGroup<T>>();
+		public IReadOnlyDictionary<int, AbstractElementGroup<T>> Groups => _groups;
+		private readonly Stack<R[]> _restoreFrames;
 
-    public void PushState()
-    {
+
+		public void PushState()
+		{
 			var backup = new R[_values.Length];
-      for (int i = 0; i < backup.Length; i++)
-        backup[i] = _values[i].Backup();
+			for (int i = 0; i < backup.Length; i++)
+				backup[i] = _values[i].Backup();
 
-      _restoreFrames.Push(backup);
+			_restoreFrames.Push(backup);
 			Console.WriteLine($"Pushed Backtracking State #{_restoreFrames.Count}");
-    }
+		}
 
-    public bool PopState()
-    {
-      if (_restoreFrames.Count == 0)
-        return false;
+		public bool PopState()
+		{
+			if (_restoreFrames.Count == 0)
+				return false;
 
-      Console.WriteLine($"Popped Backtracking State #{_restoreFrames.Count}");
-      var backup = _restoreFrames.Pop();
-      for (int i = 0; i <  _values.Length; i++)
-        _values[i].Restore(backup[i]);
+			Console.WriteLine($"Popped Backtracking State #{_restoreFrames.Count}");
+			var backup = _restoreFrames.Pop();
+			for (int i = 0; i <  _values.Length; i++)
+				_values[i].Restore(backup[i]);
 
-      return true;
-    }
+			return true;
+		}
 
-    public AbstractBoard(IEnumerable<T> values, AbstractElementFactory<T, R> factory, int width, int height)
-    {
-      this.Width = width;
-      this.Height = height;
-      this._values = values.ToArray();
-      this._restoreFrames = new Stack<R[]>();
+		public AbstractBoard(IEnumerable<T> values, AbstractElementFactory<T, R> factory, int width, int height)
+		{
+			this.Width = width;
+			this.Height = height;
+			this._values = values.ToArray();
+			this._restoreFrames = new Stack<R[]>();
 
-      if (_values.Length != Width*Height)
-        throw new ArgumentException($"Passed array length {_values.Length} mistmatches board size {Width}x{Height} = {Width*Height}");
-      _factory=factory;
-      
-    }
+			if (_values.Length != Width*Height)
+				throw new ArgumentException($"Passed array length {_values.Length} mistmatches board size {Width}x{Height} = {Width*Height}");
+			_factory=factory;
 
-    public AbstractBoard(Func<int, int, T> initializer, AbstractElementFactory<T, R> factory, int width, int height) : this(Enumerable.Range(0, width*height).Select(pos => initializer(pos % width, pos / width)), factory, width, height)
-    {
+		}
 
-    }
+		public AbstractBoard(Func<int, int, T> initializer, AbstractElementFactory<T, R> factory, int width, int height) : this(Enumerable.Range(0, width*height).Select(pos => initializer(pos % width, pos / width)), factory, width, height)
+		{
 
-    public T[] Cells => _values;
+		}
 
-    public T Get(int x, int y) => _values[y*Width+x];
-    
-    public void Set(int x, int y, T value) => _values[y*Width+x] = value;
-    
-    public void Iterate(Action<int, int, T> function)
-    {
-      for (int y = 0; y < Height; y++)
-        for (int x = 0; x < Width; x++)
-          function(x, y, Get(x, y));
-    }
+		public T[] Cells => _values;
 
-    public void Replace(Func<int, int, T, T> replaceFunction) => Iterate((x, y, v) => Set(x, y, replaceFunction(x, y, v)));
+		public T this[int x, int y] => (x >= 0 && x < Width && y >= 0 && y < Height) ? this[Index(x, y).Value] : default;
+		public T this[int index] => index >= 0 && index < _values.Length ? Cells[index] : default;
 
-    public IEnumerable<AbstractElement<T>> Elements() => _factory.Elements(this);
+		public T Get(int x, int y) => _values[Index(x, y).Value];
 
-    public IEnumerable<AbstractElement<T>> ElementsForCell(int x, int y) => _factory.Elements(this, x, y); 
-  }
+		public int? Index(int x, int y) => (x >= 0 && x < Width && y >= 0 && y < Height) ? y*Width+x : null;
+
+		public void Set(int x, int y, T value) => _values[y*Width+x] = value;
+
+		public void Iterate(Action<int, int, T> function)
+		{
+			for (int y = 0; y < Height; y++)
+				for (int x = 0; x < Width; x++)
+					function(x, y, Get(x, y));
+		}
+
+		public virtual AbstractBoard<T, R> WithGroup(HashSet<int> group)
+		{
+			var elements = group.Select(x => Cells[x]).ToHashSet();
+			foreach (var i in group)
+				_groups.Add(i, new AbstractElementGroup<T>(elements));
+
+			return this;
+		}
+
+		public virtual AbstractBoard<T, R> WithGroup(HashSet<(int x, int y)> group)
+		{
+			var elements = group.Select(x => this[x.x, x.y]).ToHashSet();
+			foreach (var i in group)
+				_groups.Add(Index(i.x, i.y).Value, new AbstractElementGroup<T>(elements));
+
+			return this;
+		}
+
+		public void Replace(Func<int, int, T, T> replaceFunction) => Iterate((x, y, v) => Set(x, y, replaceFunction(x, y, v)));
+
+		public IEnumerable<AbstractElement<T>> Elements() => _factory.Elements(this);
+
+		public IEnumerable<AbstractElement<T>> ElementsForCell(int x, int y) => _factory.Elements(this, x, y);
+	}
 }

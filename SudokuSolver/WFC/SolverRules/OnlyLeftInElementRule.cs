@@ -26,7 +26,7 @@ namespace SudokuSolver.WFC.SolverRules
 
     public bool TrySolve(IEnumerable<AbstractElement<WFCState>> elements, out SolverStep<int?> step)
     {
-      foreach(var element in elements)
+      foreach(var element in elements.Where(x => x.IsFullElement))
       {
         var values = element.GetValues().Where(x => x.IsCollapsable);
         var onlyPossible = Enumerable.Range(1, _solver.RectangleCellCount)

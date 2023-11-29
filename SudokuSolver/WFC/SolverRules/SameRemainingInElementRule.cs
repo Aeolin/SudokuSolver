@@ -24,7 +24,7 @@ namespace SudokuSolver.WFC.SolverRules
 
     public bool TrySolve(IEnumerable<AbstractElement<WFCState>> elements, out SolverStep<int?> step)
     {
-      foreach (var element in elements)
+      foreach (var element in elements.Where(x => x.IsFullElement))
       {
         var collapsables = element.GetValues()
           .Where(x => x.IsCollapsable)

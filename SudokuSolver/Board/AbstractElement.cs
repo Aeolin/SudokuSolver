@@ -11,12 +11,14 @@ namespace SudokuSolver.Board
     public int Index { get; init; }
     public IValidator<T> Validator { get; init; }
     private T[] _values;
+    public bool IsFullElement { get; init; }
 
-    public AbstractElement(int index, IValidator<T> validator, IEnumerable<T> values)
+    public AbstractElement(int index, bool isFullElement, IValidator<T> validator, IEnumerable<T> values)
     {
       Index=index;
       Validator=validator;
       _values=values.ToArray();
+      IsFullElement = isFullElement;
     }
 
     public IEnumerable<T> GetValues() => _values;

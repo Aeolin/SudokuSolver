@@ -1,4 +1,5 @@
 ﻿using SudokuSolver.Board;
+using SudokuSolver.Sudoku;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SudokuSolver.WFC.SolverRules
 {
-  public class QuasiCollapsedRule : ISolverRule<WFCState, int?>
+    public class QuasiCollapsedRule : ISolverRule<WFCState, int?>
   {
     public object Clone()
     {
@@ -19,7 +20,10 @@ namespace SudokuSolver.WFC.SolverRules
     public bool TrySolve(IEnumerable<AbstractElement<WFCState>> elements, out SolverStep<int?> step)
     {
       step = null;
-      var quasiCollapsed = elements.Where(x => x is RowElement<WFCState>).SelectMany(x => x.GetValues()).FirstOrDefault(x => x.IsQuasiCollapsed);
+      var quasiCollapsed = elements.OfType<RowElement<WFCState>>()
+        .SelectMany(x => x.GetValues())
+        .FirstOrDefault(x => x.IsQuasiCollapsed);
+
       if (quasiCollapsed == null)
         return false;
 

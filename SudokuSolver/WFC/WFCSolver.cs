@@ -1,4 +1,6 @@
 ﻿using SudokuSolver.Board;
+using SudokuSolver.Sudoku;
+using SudokuSolver.WFC.CollapseRules;
 using SudokuSolver.WFC.SolverRules;
 using System;
 using System.Collections.Generic;
@@ -12,10 +14,15 @@ namespace SudokuSolver.WFC
 	public class WFCSolver : AbstractBoard<WFCState, WFCStateBackup>
 	{
 		private readonly int[] ALL_VALUES;
-		private readonly List<ISolverRule<WFCState, int?>> solverRules = new List<ISolverRule<WFCState, int?>>();
+		private readonly List<ISolverRule<WFCState, int?>> _solverRules = new List<ISolverRule<WFCState, int?>>();
+		private readonly List<ICollapseRule<WFCState, WFCStateBackup>> _collapseRules = new List<ICollapseRule<WFCState, WFCStateBackup>>();
+
 		private string Alphabet { get; set; } = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψωБГДЁЖЗИЙЛМНОПРУФХЦЧШЩЪЫЬЭЮЯ";
 		public int RectanglesPerSide { get; init; }
 		public int RectangleCellCount => (Width / RectanglesPerSide)*(Height/RectanglesPerSide);
+		public bool BacktrackingEnabled { get; set; }
+		public bool ShouldPrint { get; set; }
+		public bool ShouldPrintWithStates { get; set; }
 
 		public WFCSolver(IEnumerable<WFCState> values, IValidator<WFCState> validator, int width, int height, int rectsPerSide) : base(values, new SudokuElementFactory<WFCState, WFCStateBackup>(rectsPerSide, validator), width, height)
 		{
@@ -29,12 +36,17 @@ namespace SudokuSolver.WFC
 			RectanglesPerSide = rectsPerSide;
 		}
 
-		public static WFCSolver FromList(IEnumerable<int> board, int width, int height, int rectsPerSide)
+		public static WFCSolver FromList(IEnumerable<int> board, int width, int height, int rectsPerSide, Action<WFCSolver> configure = null)
 		{
 			var arr = board.ToArray();
 			var values = Enumerable.Range(1, rectsPerSide*rectsPerSide).ToArray();
-			var solver = new WFCSolver((x, y) => new WFCState(x, y, new HashSet<int>(values)), new WFCValidator(), width, height, rectsPerSide);
-			solver.WithSolverRule(new OnlyLeftInElementRule(solver)).WithSolverRule(new QuasiCollapsedRule()).WithSolverRule(new SameRemainingInElementRule(solver));
+			var solver = new WFCSolver((x, y) => new WFCState(x, y, new HashSet<int>(values)), new WFCValidator(), width, height, rectsPerSide)
+				.WithSolverRule(x => new OnlyLeftInElementRule(x))
+				.WithSolverRule(new QuasiCollapsedRule())
+				.WithSolverRule(x => new SameRemainingInElementRule(x))
+				.WithCollapseRule(new CollapseInElements());
+
+			configure?.Invoke(solver);
 			var countExpected = width*height;
 			if (arr.Length != countExpected)
 				throw new ArgumentException($"board is expected to have {countExpected} elements");
@@ -49,7 +61,7 @@ namespace SudokuSolver.WFC
 		public bool TrySolveStep(out SolverStep<int?> step)
 		{
 			var elements = Elements().ToArray();
-			foreach (var rule in solverRules.OrderBy(x => x.Cost))
+			foreach (var rule in _solverRules.OrderBy(x => x.Cost))
 				if (rule.TrySolve(elements, out step))
 					return true;
 
@@ -59,6 +71,9 @@ namespace SudokuSolver.WFC
 
 		public bool Solve(out int steps, bool muteOutput = false)
 		{
+			if (_collapseRules.Count == 0 || (_solverRules.Count == 0 && BacktrackingEnabled == false))
+				throw new InvalidOperationException("At least one CollapseRule and one SolverRule must be defined");
+
 			steps = 0;
 			while (Cells.Any(x => x.HasRemaining) || PopState())
 			{
@@ -71,7 +86,11 @@ namespace SudokuSolver.WFC
 					if (muteOutput == false)
 					{
 						Console.WriteLine($"Step #{steps}: {step.Description}");
-						Console.WriteLine(Print());
+						if (ShouldPrint)
+							Console.WriteLine(Print());
+
+						if (ShouldPrintWithStates)
+							Console.WriteLine(PrintWithStates());
 					}
 
 					if (Validate() == false)
@@ -88,23 +107,87 @@ namespace SudokuSolver.WFC
 				}
 
 				// Backtrack
-				var nextState = Cells.Where(x => x.HasRemaining).OrderBy(x => x.RemainingValues.Count).FirstOrDefault();
-				if (nextState != null)
+				if (BacktrackingEnabled)
 				{
-					var value = nextState.RemainingValues.First();
-					Console.WriteLine($"Collapsed to {value} for {nextState}");
-					nextState.RemovePossibleValue(value);
-					PushState();
-					Collapse(nextState.X, nextState.Y, value);
+					var nextState = Cells.Where(x => x.HasRemaining).OrderBy(x => x.RemainingValues.Count).FirstOrDefault();
+					if (nextState != null)
+					{
+						// if theres any cell with no remaining values, backtracking has failed as well
+						//if (Cells.Any(x => x.RemainingValues.Count == 0 && x.IsCollapsed == false))
+						//	return false;
+
+						var totalRemaining = Cells.Sum(x => x.RemainingValues.Count);
+						var value = nextState.RemainingValues.First();
+						Console.WriteLine($"Collapsed to {value} for {nextState}, total remaining: {totalRemaining}");
+						nextState.RemovePossibleValue(value);
+						PushState();
+						Collapse(nextState.X, nextState.Y, value);
+					}
+				}
+				else
+				{
+					break;
 				}
 			}
 
 			return IsSolved();
 		}
 
+		public WFCSolver UseBacktracking(bool backtracking = true)
+		{
+			this.BacktrackingEnabled = backtracking;
+			return this;
+		}
+
+		public override WFCSolver WithGroup(HashSet<int> group)
+		{
+			base.WithGroup(group);
+			return this;
+		}
+
+		public override WFCSolver WithGroup(HashSet<(int x, int y)> group)
+		{
+			base.WithGroup(group);
+			return this;
+		}
+
+		public WFCSolver WithGroup(params int[] group) => WithGroup(new HashSet<int>(group));
+		public WFCSolver WithGroup(params (int x, int y)[] group) => WithGroup(new HashSet<(int, int)>(group));
+
+
+		public WFCSolver WithPrint(bool print = true)
+		{
+			ShouldPrint = print;
+			return this;
+		}
+
+		public WFCSolver WithPrintWithStates(bool printWithStates = true)
+		{
+			ShouldPrintWithStates = printWithStates;
+			return this;
+		}
+
+		public WFCSolver WithCollapseRule(ICollapseRule<WFCState, WFCStateBackup> collapseRule)
+		{
+			_collapseRules.Add(collapseRule);
+			return this;
+		}
+
+		public WFCSolver WithCollapseRule(Func<WFCSolver, ICollapseRule<WFCState, WFCStateBackup>> collapseRuleFunc)
+		{
+			_collapseRules.Add(collapseRuleFunc(this));
+			return this;
+		}
+
 		public WFCSolver WithSolverRule(ISolverRule<WFCState, int?> rule)
 		{
-			solverRules.Add(rule);
+			_solverRules.Add(rule);
+			return this;
+		}
+
+		public WFCSolver WithSolverRule(Func<WFCSolver, ISolverRule<WFCState, int?>> ruleFunc)
+		{
+			_solverRules.Add(ruleFunc(this));
 			return this;
 		}
 
@@ -117,13 +200,13 @@ namespace SudokuSolver.WFC
 		{
 			var state = Get(x, y);
 			state.Collapse(value);
-			foreach (var eState in ElementsForCell(x, y).SelectMany(x => x.GetValues()).Where(x => x.IsCollapsable && x != state))
-				eState.RemovePossibleValue(value);
+			foreach (var rule in _collapseRules)
+				rule.Collapse(x, y, value, this);
 		}
 
 		public void RemovePossibleValue(int x, int y, int value) => Get(x, y).RemovePossibleValue(value);
 
-		public bool Validate() => Elements().All(x => x.Validate());
+		public bool Validate() => Cells.All(x => x.IsCollapsed || x.RemainingValues.Count > 0) && Elements().All(x => x.Validate());
 
 		public bool IsSolved() => Cells.All(x => x.IsCollapsed);
 
@@ -182,7 +265,7 @@ namespace SudokuSolver.WFC
 						{
 							builder.Append(' ');
 							for (int i = line*rectWidth; i < (line + 1)*rectWidth; i++)
-								builder.Append(state.IsRemaining(i) ? Alphabet[i+1] + " " : "  ");
+								builder.Append(state.IsRemaining(i+1) ? Alphabet[i+1] + " " : "  ");
 							builder.Append('|');
 						}
 					}
