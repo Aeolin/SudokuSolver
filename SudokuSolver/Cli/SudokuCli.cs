@@ -24,6 +24,7 @@ namespace SudokuSolver.Cli
 		private static readonly Regex MATCH_PUSH_COMMAND = new Regex(@"^push(?:\s+(\S+))", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		private static readonly Regex MATCH_POP_COMMAND = new Regex(@"^pop(?:\s+(\S+))", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		private static readonly Regex MATCH_SAVE_COMMAND = new Regex(@"^save(?:\s+(.*))?", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+		private static readonly Regex MATCH_ELIMINATE_COMMAND = new Regex(@"^-([a-z,1-9]{1,2})=([0-9])", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
 		private WFCSolver _solver;
 		private SudokuPuzzle _puzzle;
@@ -57,7 +58,8 @@ namespace SudokuSolver.Cli
 				{ MATCH_SOLVE_COMMAND, HandleSolveCommand },
 				{ MATCH_PUSH_COMMAND, HandlePushCommand },
 				{ MATCH_POP_COMMAND, HandlePopCommand },
-				{ MATCH_SAVE_COMMAND, HandleSaveCommand }
+				{ MATCH_SAVE_COMMAND, HandleSaveCommand },
+				{ MATCH_ELIMINATE_COMMAND, HandleEliminateCommand }
 			};
 		}
 
@@ -114,7 +116,7 @@ namespace SudokuSolver.Cli
 		}
 
 
-		private void AppendLog(string message, ConsoleColor color)
+		private void AppendLog(string message, ConsoleColor color = ConsoleColor.White)
 		{
 			_logs.Add((message, color));
 		}

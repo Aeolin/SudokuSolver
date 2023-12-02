@@ -46,6 +46,12 @@ namespace SudokuSolver.Cli
 			var parent = Directory.GetParent(fileName);
 			Directory.CreateDirectory(parent.FullName);
 			var model = _puzzle.Clone();
+			model.Backups = _solver.Backups.Select(x => new BackupModel
+			{
+				Number = x.Number,
+				Name = x.Name,
+				States = x.Backup.ToArray()
+			}).ToArray();
 			model.Puzzle = _solver.Cells.Select(x => x.GetValueOrDefault(0)).ToArray();
 			if (File.Exists(fileName))
 			{
@@ -92,6 +98,38 @@ namespace SudokuSolver.Cli
 			}
 
 			AppendLog($"Solved {solved} steps", solved == 0 ? ConsoleColor.Yellow : ConsoleColor.Gray);
+		}
+
+		private void HandleEliminateCommand(Match match)
+		{
+			var from = match.Groups[1].Value.ToUpper();
+			if (int.TryParse(match.Groups[2].Value, out var value) == false)
+				AppendLog("Invalid number", ConsoleColor.Red);
+
+			_solver.PushState();
+			// row + col
+			if(from.Length == 2)
+			{
+				var row = _solver.Width - 1 - ROWS.IndexOf(from[0]);
+				var col = int.Parse(from[1].ToString()) - 1;
+				_solver[col, row].RemovePossibleValue(value);
+				AppendLog($"Removed {value} from cell ({from[0]},{from[1]})");
+			}
+			else if (char.IsDigit(from[0]))
+			{
+				var col = int.Parse(from) - 1;
+				for (int i = 0; i < _solver.Width; i++)
+					_solver[col, i].RemovePossibleValue(value);
+				AppendLog($"Removed {value} from column {from}");
+
+			}
+			else if (char.IsLetter(from[0]))
+			{
+				var row = _solver.Width - 1 - ROWS.IndexOf(from[0]);
+				for(int i= 0; i < _solver.Height; i++)
+					_solver[i, row].RemovePossibleValue(value);
+				AppendLog($"Removed {value} from row {row}");
+			}
 		}
 
 		private void HandleSetCommand(Match match)

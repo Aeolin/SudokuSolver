@@ -18,6 +18,8 @@ namespace SudokuSolver
 		public int[][] Groups { get; set; }
 		public string[] ExtraRules { get; set; }
 
+		public BackupModel[] Backups { get; set; }
+
 		public SudokuPuzzle Clone()
 		{
 			return new SudokuPuzzle
