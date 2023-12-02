@@ -17,6 +17,11 @@ namespace SudokuSolver.Board
 		private readonly Stack<AbstractBackup<R>> _restoreFrames;
 		public IEnumerable<AbstractBackup<R>> Backups => _restoreFrames;
 
+		public void AddState(string name, int number, R[] backup)
+		{
+			_restoreFrames.Push(new AbstractBackup<R>(backup, number, name));
+		}
+
 		public void PushState(string name = null)
 		{
 			var backup = new R[_values.Length];

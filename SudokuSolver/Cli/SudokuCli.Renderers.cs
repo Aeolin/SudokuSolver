@@ -66,7 +66,7 @@ namespace SudokuSolver.Cli
 			var lines = Math.Min(height, backups.Length);
 			for (int i = 0; i < lines; i++)
 			{
-				var backup = backups[backups.Length - i - 1];
+				var backup = backups[i];
 				Console.SetCursorPosition(x, y + i);
 				Console.Write(backup.Name.Limit(width));
 			}

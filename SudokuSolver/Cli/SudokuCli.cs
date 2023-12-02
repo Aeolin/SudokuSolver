@@ -44,6 +44,11 @@ namespace SudokuSolver.Cli
 					solver.WithGroup(group);
 				}
 
+				foreach(var backup in puzzle.Backups.OrderBy(x => x.Number))
+				{
+					solver.AddState(backup.Name, backup.Number, backup.States);
+				}
+
 				if (puzzle.ExtraRules.Contains("NonConsecutiveNeighbours"))
 					solver.WithCollapseRule(new CollapseConsecutiveNeighbours());
 

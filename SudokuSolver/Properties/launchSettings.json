@@ -2,7 +2,7 @@
   "profiles": {
     "SudokuSolver": {
       "commandName": "Project",
-      "commandLineArgs": "X:\\\\Data\\\\Workspaces\\\\Awo\\\\SudokuSolver\\\\SudokuSolver\\\\Resources\\\\pap-sudoku.json"
+      "commandLineArgs": "X:\\Data\\Workspaces\\Awo\\SudokuSolver\\SudokuSolver\\Resources\\save-2s.json"
     },
     "WSL": {
       "commandName": "WSL2",
